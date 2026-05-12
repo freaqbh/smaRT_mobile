@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "48108409388",
+    "project_id": "smart-247d3",
+    "storage_bucket": "smart-247d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:48108409388:android:625e60e72ea2291363f789",
+        "android_client_info": {
+          "package_name": "com.capstone.smart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0gF8YhkSOuSGIlBWLwwf-370QeCr-dJk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
