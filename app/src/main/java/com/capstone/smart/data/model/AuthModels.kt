@@ -44,6 +44,9 @@ data class Broadcast(
     val judul: String,
     val isi_pesan: String,
     val kategori: String,
+    val tanggal_kegiatan: String?,
+    val waktu_kegiatan: String?,
+    val lokasi: String?,
     val created_at: String?,
     val pengurus: BroadcastPengurus?
 )
@@ -80,6 +83,12 @@ data class Surat(
 
 data class SuratUser(
     val nama: String
+)
+
+data class SuratRiwayatResponse(
+    val message: String,
+    val user: SuratUser?,
+    val data: List<Surat>
 )
 
 // ══════════════════════════════════════════════
@@ -146,4 +155,14 @@ data class KasMonitorResponse(
     val last_block_hash: String?,
     val status_integritas: Boolean,
     val server_timestamp: String?
+)
+
+// ══════════════════════════════════════════════
+// FCM TOKEN
+// ══════════════════════════════════════════════
+
+data class FcmTokenRequest(
+    val token: String,
+    @SerializedName("device_id")
+    val deviceId: String
 )

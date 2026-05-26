@@ -28,7 +28,8 @@ object ApiClient {
             requestBuilder.header("Authorization", "Bearer $token")
         }
         
-        requestBuilder.header("Content-Type", "application/json")
+        // Don't set Content-Type manually — Retrofit sets it automatically
+        // (application/json for @Body, multipart/form-data for @Multipart)
         requestBuilder.header("Accept", "application/json")
 
         chain.proceed(requestBuilder.build())

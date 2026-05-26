@@ -3,7 +3,10 @@ package com.capstone.smart.data.repository
 import com.capstone.smart.data.model.*
 import com.capstone.smart.data.remote.ApiClient
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 /**
  * Repository untuk memanggil semua API smaRT.
@@ -12,6 +15,34 @@ import okhttp3.RequestBody.Companion.toRequestBody
 object SmaRTRepository {
 
     private val api get() = ApiClient.instance
+
+    // ═══════════ FCM TOKEN ═══════════
+
+    suspend fun sendFcmToken(token: String, deviceId: String): Result<String> {
+        return try {
+            val response = api.sendFcmToken(FcmTokenRequest(token, deviceId))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Token tersimpan.")
+            } else {
+                Result.failure(Exception("Gagal menyimpan FCM token."))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Tidak bisa terhubung ke server."))
+        }
+    }
+
+    suspend fun deleteFcmToken(token: String, deviceId: String): Result<String> {
+        return try {
+            val response = api.deleteFcmToken(FcmTokenRequest(token, deviceId))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Token dihapus.")
+            } else {
+                Result.failure(Exception("Gagal menghapus FCM token."))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Tidak bisa terhubung ke server."))
+        }
+    }
 
     // ═══════════ AUTH ═══════════
 
@@ -74,18 +105,53 @@ object SmaRTRepository {
         }
     }
 
-    suspend fun ajukanSurat(namaSurat: String, deskripsi: String): Result<Surat> {
+    suspend fun getSuratRiwayat(userId: String): Result<List<Surat>> {
         return try {
-            val namaBody = namaSurat.toRequestBody("text/plain".toMediaTypeOrNull())
-            val deskripsiBody = deskripsi.toRequestBody("text/plain".toMediaTypeOrNull())
-            val response = api.ajukanSurat(namaBody, deskripsiBody)
+            val response = api.getSuratRiwayat(userId)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.data)
             } else {
-                Result.failure(Exception("Gagal mengajukan surat."))
+                Result.failure(Exception("Gagal memuat riwayat surat."))
             }
         } catch (e: Exception) {
             Result.failure(Exception("Tidak bisa terhubung ke server."))
+        }
+    }
+
+    suspend fun ajukanSurat(
+        namaSurat: String,
+        deskripsi: String,
+        dokumenFile: File? = null
+    ): Result<Surat> {
+        return try {
+            val namaBody = namaSurat.toRequestBody("text/plain".toMediaTypeOrNull())
+            val deskripsiBody = deskripsi.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val filePart = dokumenFile?.let { file ->
+                val mimeType = when {
+                    file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                    file.name.endsWith(".jpg", ignoreCase = true) ||
+                            file.name.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                    file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                    else -> "application/octet-stream"
+                }
+                val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("dokumen_pendukung", file.name, requestBody)
+            }
+
+            val response = api.ajukanSurat(namaBody, deskripsiBody, filePart)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.data)
+            } else {
+                val errorMsg = try {
+                    response.errorBody()?.string() ?: "Gagal mengajukan surat."
+                } catch (_: Exception) {
+                    "Gagal mengajukan surat (${response.code()})."
+                }
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Tidak bisa terhubung ke server: ${e.localizedMessage}"))
         }
     }
 
@@ -97,10 +163,15 @@ object SmaRTRepository {
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.data)
             } else {
-                Result.failure(Exception("Gagal mengirim sinyal darurat."))
+                val errorMsg = try {
+                    response.errorBody()?.string() ?: "Gagal mengirim sinyal darurat."
+                } catch (_: Exception) {
+                    "Gagal mengirim sinyal darurat (${response.code()})."
+                }
+                Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Tidak bisa terhubung ke server."))
+            Result.failure(Exception("Tidak bisa terhubung ke server: ${e.localizedMessage}"))
         }
     }
 

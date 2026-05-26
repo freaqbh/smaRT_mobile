@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmaRTApp() {
     val viewModel: SmaRTViewModel = viewModel()
+    val context = LocalContext.current
 
     // Notification permission (Android 13+)
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -75,6 +77,8 @@ fun SmaRTApp() {
                     viewModel = viewModel,
                     onLoginSuccess = {
                         isLoggedIn = true
+                        // Kirim FCM token ke backend setelah login berhasil
+                        viewModel.sendFcmToken(context)
                         navController.navigate("beranda") {
                             popUpTo("login") { inclusive = true }
                         }
@@ -139,7 +143,7 @@ fun SmaRTApp() {
                 LaporWargaScreen()
             }
             composable("agenda") {
-                AgendaScreen()
+                AgendaScreen(viewModel = viewModel)
             }
         }
 

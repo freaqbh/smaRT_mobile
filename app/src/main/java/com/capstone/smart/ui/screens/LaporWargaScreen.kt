@@ -104,9 +104,11 @@ fun LaporWargaScreen(
                 text = "DESKRIPSI & LOKASI",
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
+            var deskripsi by remember { mutableStateOf("") }
+            
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = deskripsi,
+                onValueChange = { deskripsi = it },
                 placeholder = {
                     Text(
                         "Contoh: Lampu jalan di depan blok C-07 mati sejak 3 hari lalu...",

@@ -6,15 +6,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.capstone.smart.ui.components.SmaRTHeader
@@ -36,6 +38,9 @@ fun KeuanganScreen(
     val formatter = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply {
         maximumFractionDigits = 0
     }
+
+    // State for blockchain verification dialog
+    var showVerifyDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -123,6 +128,38 @@ fun KeuanganScreen(
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Validasi Blockchain button
+            Button(
+                onClick = {
+                    viewModel.verifyBlockchain()
+                    showVerifyDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KeuanganGreen,
+                    contentColor = Color.White
+                ),
+                elevation = ButtonDefaults.buttonElevation(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Shield,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Validasi Blockchain",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -224,6 +261,198 @@ fun KeuanganScreen(
         }
 
         Spacer(modifier = Modifier.height(100.dp))
+    }
+
+    // Blockchain Verification Dialog
+    if (showVerifyDialog) {
+        BlockchainVerifyDialog(
+            viewModel = viewModel,
+            formatter = formatter,
+            onDismiss = {
+                showVerifyDialog = false
+                viewModel.clearVerifyResult()
+            }
+        )
+    }
+}
+
+@Composable
+private fun BlockchainVerifyDialog(
+    viewModel: SmaRTViewModel,
+    formatter: NumberFormat,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = CardWhite,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Shield,
+                    contentDescription = null,
+                    tint = KeuanganGreen,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Validasi Blockchain",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            }
+        },
+        text = {
+            if (viewModel.kasVerifyLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = KeuanganGreen,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Memverifikasi integritas blockchain...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                val result = viewModel.kasVerifyResult
+                if (result != null) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Status indicator
+                        val isValid = result.status_integritas
+                        val statusColor = if (isValid) StatusGreen else PanicRed
+                        val statusIcon = if (isValid) "✅" else "❌"
+                        val statusText = if (isValid)
+                            "Hashchain Valid"
+                        else
+                            "Hashchain Tidak Valid — Terdeteksi Manipulasi!"
+
+                        Text(
+                            text = statusIcon,
+                            fontSize = 48.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Details card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = BackgroundLight),
+                            elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                DetailRow(label = "Total Blok", value = "${result.total_blocks}")
+                                DetailRow(
+                                    label = "Pemasukan",
+                                    value = formatter.format(result.total_pemasukan)
+                                )
+                                DetailRow(
+                                    label = "Pengeluaran",
+                                    value = formatter.format(result.total_pengeluaran)
+                                )
+                                DetailRow(
+                                    label = "Saldo",
+                                    value = formatter.format(result.saldo)
+                                )
+                                if (result.last_block_hash != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Hash Terakhir:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextTertiary
+                                    )
+                                    Text(
+                                        text = result.last_block_hash.take(32) + "...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                                if (result.server_timestamp != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Waktu cek: ${result.server_timestamp}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextTertiary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Gagal memverifikasi blockchain. Coba lagi.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PanicRed,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KeuanganGreen,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Tutup", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun DetailRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

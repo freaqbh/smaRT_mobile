@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.capstone.smart.ui.components.SmaRTHeader
@@ -31,6 +32,7 @@ fun AkunScreen(
     modifier: Modifier = Modifier
 ) {
     val user = viewModel.currentUser
+    val context = LocalContext.current
     val displayName = user?.nama ?: "Warga"
     val initials = displayName.split(" ")
         .take(2)
@@ -153,7 +155,7 @@ fun AkunScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .clickable {
-                    viewModel.logout {
+                    viewModel.logout(context) {
                         onLogout()
                     }
                 },

@@ -9,6 +9,20 @@ import retrofit2.http.*
 interface ApiService {
 
     // ══════════════════════════════════════════════
+    // FCM TOKEN
+    // ══════════════════════════════════════════════
+
+    @POST("fcm/token")
+    suspend fun sendFcmToken(
+        @Body request: FcmTokenRequest
+    ): Response<MessageResponse>
+
+    @HTTP(method = "DELETE", path = "fcm/token", hasBody = true)
+    suspend fun deleteFcmToken(
+        @Body request: FcmTokenRequest
+    ): Response<MessageResponse>
+
+    // ══════════════════════════════════════════════
     // AUTH
     // ══════════════════════════════════════════════
 
@@ -46,6 +60,11 @@ interface ApiService {
         @Part("deskripsi_surat") deskripsiSurat: RequestBody,
         @Part dokumenPendukung: MultipartBody.Part? = null
     ): Response<SuratResponse>
+
+    @GET("surat/{user_id}/riwayat")
+    suspend fun getSuratRiwayat(
+        @Path("user_id") userId: String
+    ): Response<SuratRiwayatResponse>
 
     // ══════════════════════════════════════════════
     // PANIC BUTTON
