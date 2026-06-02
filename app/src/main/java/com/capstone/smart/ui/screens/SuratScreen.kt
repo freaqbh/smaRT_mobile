@@ -38,7 +38,10 @@ fun SuratScreen(
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var expandedSurat by remember { mutableStateOf(false) }
-    val optionsSurat = listOf("Pengantar SKCK", "Surat Domisili", "Surat Keterangan Usaha", "Lainnya")
+    val optionsSurat = listOf("Pengantar SKCK", "Surat Domisili", "Surat Keterangan Usaha","Surat Keterangan Ahli Waris",
+    "Surat Keterangan Pindah Nikah",
+    "Surat Keterangan Domisili Usaha",
+    "Surat Pengesahan Tanda Bukti Diri(Taspen)", "Lainnya")
     var selectedSurat by remember { mutableStateOf(optionsSurat[0]) }
     var keperluan by remember { mutableStateOf("") }
 
