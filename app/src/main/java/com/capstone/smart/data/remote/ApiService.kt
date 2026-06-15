@@ -84,4 +84,22 @@ interface ApiService {
 
     @GET("kas/monitor")
     suspend fun getKasMonitor(): Response<KasMonitorResponse>
+
+    // ══════════════════════════════════════════════
+    // LAPORAN WARGA
+    // ══════════════════════════════════════════════
+
+    @Multipart
+    @POST("laporan")
+    suspend fun kirimLaporan(
+        @Part("kategori_masalah") kategoriMasalah: RequestBody,
+        @Part("deskripsi") deskripsi: RequestBody,
+        @Part("lokasi") lokasi: RequestBody,
+        @Part foto: MultipartBody.Part? = null
+    ): Response<LaporanResponse>
+
+    @GET("laporan/{user_id}/riwayat")
+    suspend fun getLaporanRiwayat(
+        @Path("user_id") userId: String
+    ): Response<LaporanRiwayatResponse>
 }

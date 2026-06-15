@@ -140,7 +140,7 @@ fun SmaRTApp() {
                 )
             }
             composable("lapor_warga") {
-                LaporWargaScreen()
+                LaporWargaScreen(viewModel = viewModel)
             }
             composable("agenda") {
                 AgendaScreen(viewModel = viewModel)

@@ -267,4 +267,46 @@ class SmaRTViewModel : ViewModel() {
             agendaLoading = false
         }
     }
+
+    // ═══════════ LAPORAN WARGA STATE ═══════════
+    var laporanRiwayat by mutableStateOf<List<LaporanWarga>>(emptyList())
+        private set
+    var laporanRiwayatLoading by mutableStateOf(false)
+        private set
+    var laporanSubmitLoading by mutableStateOf(false)
+        private set
+    var laporanSubmitResult by mutableStateOf<String?>(null)
+        private set
+
+    // ═══════════ LAPORAN WARGA METHODS ═══════════
+
+    fun loadLaporanRiwayat() {
+        val userId = currentUser?.id ?: return
+        viewModelScope.launch {
+            laporanRiwayatLoading = true
+            val result = SmaRTRepository.getLaporanRiwayat(userId)
+            result.onSuccess { laporanRiwayat = it }
+            laporanRiwayatLoading = false
+        }
+    }
+
+    fun kirimLaporan(kategori: String, deskripsi: String, lokasi: String, fotoFile: File? = null) {
+        viewModelScope.launch {
+            laporanSubmitLoading = true
+            laporanSubmitResult = null
+            val result = SmaRTRepository.kirimLaporan(kategori, deskripsi, lokasi, fotoFile)
+            result.onSuccess {
+                laporanSubmitResult = "Laporan berhasil dikirim!"
+                loadLaporanRiwayat()
+            }
+            result.onFailure {
+                laporanSubmitResult = it.message
+            }
+            laporanSubmitLoading = false
+        }
+    }
+
+    fun clearLaporanSubmitResult() {
+        laporanSubmitResult = null
+    }
 }

@@ -166,3 +166,35 @@ data class FcmTokenRequest(
     @SerializedName("device_id")
     val deviceId: String
 )
+
+// ══════════════════════════════════════════════
+// LAPORAN WARGA
+// ══════════════════════════════════════════════
+
+data class LaporanResponse(
+    val message: String,
+    val data: LaporanWarga
+)
+
+data class LaporanRiwayatResponse(
+    val message: String,
+    val user: LaporanUser?,
+    val data: List<LaporanWarga>
+)
+
+data class LaporanWarga(
+    val id: String,
+    val user_id: String?,
+    val kategori_masalah: String,
+    val deskripsi: String,
+    val lokasi: String?,
+    val foto: String?,
+    val status: String,
+    val created_at: String?,
+    val user: LaporanUser?
+)
+
+data class LaporanUser(
+    val id: String,
+    val nama: String
+)

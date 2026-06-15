@@ -66,4 +66,5 @@ dependencies {
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

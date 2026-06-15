@@ -202,4 +202,57 @@ object SmaRTRepository {
             Result.failure(Exception("Tidak bisa terhubung ke server."))
         }
     }
+
+    // ═══════════ LAPORAN WARGA ═══════════
+
+    suspend fun kirimLaporan(
+        kategoriMasalah: String,
+        deskripsi: String,
+        lokasi: String,
+        fotoFile: File? = null
+    ): Result<LaporanWarga> {
+        return try {
+            val kategoriBody = kategoriMasalah.toRequestBody("text/plain".toMediaTypeOrNull())
+            val deskripsiBody = deskripsi.toRequestBody("text/plain".toMediaTypeOrNull())
+            val lokasiBody = lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val fotoPart = fotoFile?.let { file ->
+                val mimeType = when {
+                    file.name.endsWith(".jpg", ignoreCase = true) ||
+                            file.name.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                    file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                    else -> "image/jpeg"
+                }
+                val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("foto", file.name, requestBody)
+            }
+
+            val response = api.kirimLaporan(kategoriBody, deskripsiBody, lokasiBody, fotoPart)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.data)
+            } else {
+                val errorMsg = try {
+                    response.errorBody()?.string() ?: "Gagal mengirim laporan."
+                } catch (_: Exception) {
+                    "Gagal mengirim laporan (${response.code()})."
+                }
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Tidak bisa terhubung ke server: ${e.localizedMessage}"))
+        }
+    }
+
+    suspend fun getLaporanRiwayat(userId: String): Result<List<LaporanWarga>> {
+        return try {
+            val response = api.getLaporanRiwayat(userId)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.data)
+            } else {
+                Result.failure(Exception("Gagal memuat riwayat laporan."))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Tidak bisa terhubung ke server."))
+        }
+    }
 }
