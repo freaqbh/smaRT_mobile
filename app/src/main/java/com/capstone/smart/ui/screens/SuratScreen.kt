@@ -1,6 +1,7 @@
 package com.capstone.smart.ui.screens
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -280,7 +282,8 @@ fun SuratScreen(
                             name = surat.nama_surat,
                             date = "Diajukan ${surat.created_at?.take(10) ?: "-"}",
                             status = statusText,
-                            statusColor = statusColor
+                            statusColor = statusColor,
+                            fileFinal = surat.file_final
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -359,7 +362,8 @@ fun SuratScreen(
                             name = surat.nama_surat,
                             date = "Diajukan ${surat.created_at?.take(10) ?: "-"}",
                             status = statusText,
-                            statusColor = statusColor
+                            statusColor = statusColor,
+                            fileFinal = surat.file_final
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -383,8 +387,10 @@ private fun SuratStatusCard(
     date: String,
     status: String,
     statusColor: Color,
+    fileFinal: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -400,7 +406,7 @@ private fun SuratStatusCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleSmall,
@@ -414,7 +420,32 @@ private fun SuratStatusCard(
                     color = TextTertiary
                 )
             }
-            StatusBadge(text = status, color = statusColor)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                StatusBadge(text = status, color = statusColor)
+                if (fileFinal != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            val url = if (fileFinal.startsWith("http")) fileFinal else "https://api.smart-rt.cloud/storage/$fileFinal"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal600),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Teal600)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Download",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Download", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
         }
     }
 }

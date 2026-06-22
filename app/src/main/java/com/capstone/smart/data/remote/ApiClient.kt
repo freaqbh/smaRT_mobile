@@ -8,8 +8,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // URL server Laravel Anda. Gunakan 10.0.2.2 jika di emulator Android Studio.
-    private const val BASE_URL = "http://10.0.2.2:8000/api/"
+    // URL server production yang sudah di-deploy
+    private const val BASE_URL = "https://api.smart-rt.cloud/api/"
 
     // Variabel untuk menyimpan token
     var authToken: String? = null

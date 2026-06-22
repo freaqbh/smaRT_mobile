@@ -2,9 +2,8 @@ package com.capstone.smart.ui.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.pm.PackageManager
-import android.location.LocationManager
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -29,6 +28,19 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.capstone.smart.ui.theme.*
 import com.capstone.smart.ui.viewmodel.SmaRTViewModel
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -43,6 +55,11 @@ fun PanicDialog(
     var latitude by remember { mutableStateOf<String?>(null) }
     var longitude by remember { mutableStateOf<String?>(null) }
     var locationError by remember { mutableStateOf<String?>(null) }
+
+    // Fused Location Provider Client
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
 
     // Permission state
     var hasLocationPermission by remember {
@@ -60,7 +77,7 @@ fun PanicDialog(
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
 
-    // Get location and trigger panic
+    // Get location using Fused Location Provider and trigger panic
     LaunchedEffect(hasLocationPermission) {
         if (!isSent) {
             if (!hasLocationPermission) {
@@ -72,31 +89,79 @@ fun PanicDialog(
                 )
             } else {
                 isSending = true
-                // Get last known location from LocationManager
-                val locationManager =
-                    context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                val location = try {
-                    locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                        ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                } catch (e: Exception) {
-                    null
-                }
 
-                if (location != null) {
-                    latitude = location.latitude.toString()
-                    longitude = location.longitude.toString()
-                    locationError = null
-                    viewModel.triggerPanic(latitude!!, longitude!!)
-                } else {
-                    // Fallback: use default coordinates if location unavailable
+                // Try getting last known location first (fast)
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    if (location != null) {
+                        latitude = location.latitude.toString()
+                        longitude = location.longitude.toString()
+                        locationError = null
+                        viewModel.triggerPanic(latitude!!, longitude!!)
+                        isSending = false
+                        isSent = true
+                    } else {
+                        // Last location is null — request a fresh location update
+                        val locationRequest = LocationRequest.Builder(
+                            Priority.PRIORITY_HIGH_ACCURACY,
+                            1000L // interval ms
+                        )
+                            .setMaxUpdates(1) // only need one update
+                            .setMinUpdateIntervalMillis(500L)
+                            .build()
+
+                        val locationCallback = object : LocationCallback() {
+                            override fun onLocationResult(result: LocationResult) {
+                                val loc = result.lastLocation
+                                if (loc != null) {
+                                    latitude = loc.latitude.toString()
+                                    longitude = loc.longitude.toString()
+                                    locationError = null
+                                    viewModel.triggerPanic(latitude!!, longitude!!)
+                                } else {
+                                    // Ultimate fallback
+                                    latitude = "-7.289864"
+                                    longitude = "112.751383"
+                                    locationError = "GPS tidak tersedia, menggunakan lokasi perkiraan."
+                                    viewModel.triggerPanic(latitude!!, longitude!!)
+                                }
+                                isSending = false
+                                isSent = true
+                                fusedLocationClient.removeLocationUpdates(this)
+                            }
+                        }
+
+                        fusedLocationClient.requestLocationUpdates(
+                            locationRequest,
+                            locationCallback,
+                            Looper.getMainLooper()
+                        )
+                    }
+                }.addOnFailureListener {
+                    // Fused provider failed entirely — use fallback
                     latitude = "-7.289864"
                     longitude = "112.751383"
                     locationError = "GPS tidak tersedia, menggunakan lokasi perkiraan."
                     viewModel.triggerPanic(latitude!!, longitude!!)
+                    isSending = false
+                    isSent = true
                 }
-                isSending = false
-                isSent = true
             }
+        }
+    }
+
+    // Google Maps camera state
+    val cameraPositionState = rememberCameraPositionState()
+
+    // Update camera when location is available
+    LaunchedEffect(latitude, longitude) {
+        if (latitude != null && longitude != null) {
+            try {
+                val lat = latitude!!.toDouble()
+                val lng = longitude!!.toDouble()
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                    LatLng(lat, lng), 17f
+                )
+            } catch (_: NumberFormatException) { }
         }
     }
 
@@ -108,7 +173,7 @@ fun PanicDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f))
-                .padding(top = 220.dp),
+                .padding(top = 180.dp),
             contentAlignment = Alignment.TopCenter
         ) {
             Card(
@@ -123,7 +188,7 @@ fun PanicDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp, vertical = 36.dp),
+                        .padding(horizontal = 32.dp, vertical = 28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Warning icon
@@ -150,7 +215,7 @@ fun PanicDialog(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Title
                     val titleText = when {
@@ -171,7 +236,7 @@ fun PanicDialog(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Description
                     val descText = when {
@@ -191,9 +256,9 @@ fun PanicDialog(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Location card
+                    // Google Maps + location card
                     if (latitude != null && longitude != null) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -201,32 +266,69 @@ fun PanicDialog(
                             colors = CardDefaults.cardColors(containerColor = BackgroundLight),
                             elevation = CardDefaults.cardElevation(0.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.LocationOn,
-                                    contentDescription = null,
-                                    tint = PanicRed,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = if (locationError != null)
-                                            "Lokasi Perkiraan"
-                                        else
-                                            "Lokasi Terdeteksi (GPS)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextTertiary
+                            Column {
+                                // Google Map showing user's location
+                                val userLatLng = try {
+                                    LatLng(latitude!!.toDouble(), longitude!!.toDouble())
+                                } catch (_: NumberFormatException) {
+                                    null
+                                }
+
+                                if (userLatLng != null) {
+                                    GoogleMap(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(160.dp)
+                                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                                        cameraPositionState = cameraPositionState,
+                                        properties = MapProperties(
+                                            isMyLocationEnabled = hasLocationPermission
+                                        ),
+                                        uiSettings = MapUiSettings(
+                                            zoomControlsEnabled = false,
+                                            scrollGesturesEnabled = false,
+                                            zoomGesturesEnabled = false,
+                                            tiltGesturesEnabled = false,
+                                            rotationGesturesEnabled = false,
+                                            myLocationButtonEnabled = false
+                                        )
+                                    ) {
+                                        Marker(
+                                            state = MarkerState(position = userLatLng),
+                                            title = "Lokasi SOS",
+                                            snippet = "Posisi darurat Anda"
+                                        )
+                                    }
+                                }
+
+                                // Location text info
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.LocationOn,
+                                        contentDescription = null,
+                                        tint = PanicRed,
+                                        modifier = Modifier.size(20.dp)
                                     )
-                                    Text(
-                                        text = "$latitude, $longitude",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = if (locationError != null)
+                                                "Lokasi Perkiraan"
+                                            else
+                                                "Lokasi Terdeteksi (GPS)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextTertiary
+                                        )
+                                        Text(
+                                            text = "$latitude, $longitude",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -234,7 +336,7 @@ fun PanicDialog(
 
                     // Location warning
                     locationError?.let { error ->
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = error,
                             style = MaterialTheme.typography.bodySmall,
@@ -245,7 +347,7 @@ fun PanicDialog(
 
                     // API result
                     viewModel.panicResult?.let { result ->
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = result,
                             style = MaterialTheme.typography.bodySmall,
@@ -254,7 +356,7 @@ fun PanicDialog(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Retry button (if error)
                     if (viewModel.panicError != null && latitude != null && longitude != null) {
